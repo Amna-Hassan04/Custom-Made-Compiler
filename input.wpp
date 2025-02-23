@@ -1,0 +1,6 @@
+int x;//hello
+float a, b, c;
+double y /*hello*/ = 3.14159;
+char initial = 'J';
+int z,p;
+string "W++ source code";

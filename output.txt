@@ -1,0 +1,53 @@
+Token Type
+------------------------
+int                  Keyword
+x                    Identifier
+;                    Separator
+/                    Operator
+/                    Operator
+hello                Identifier
+float                Keyword
+a                    Identifier
+,                    Separator
+b                    Identifier
+,                    Separator
+c                    Identifier
+;                    Separator
+double               Keyword
+y                    Identifier
+/                    Operator
+*                    Operator
+hello                Identifier
+*                    Operator
+/                    Operator
+=                    Operator
+3.14159              Literal (Float)
+;                    Separator
+char                 Keyword
+initial              Identifier
+=                    Operator
+J                    Literal (Char)
+;                    Separator
+int                  Keyword
+z                    Identifier
+,                    Separator
+p                    Identifier
+;                    Separator
+string               Identifier
+W++ source code      Literal (String)
+;                    Separator
+
+Symbol Table:
+------------------------
+Identifier Type Value
+------------------------
+x          int        (Not initialized)
+a          float      (Not initialized)
+b          float      (Not initialized)
+c          float      (Not initialized)
+y          double     (Not initialized)
+hello      double     3.14159        
+initial    char       J              
+z          int        (Not initialized)
+p          int        (Not initialized)
+string     string     W++ source code
