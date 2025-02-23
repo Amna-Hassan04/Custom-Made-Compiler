@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -17,12 +18,22 @@ public class ScannerGUI {
         frame.setSize(800, 600);
         frame.setLayout(new BorderLayout());
 
+        // ===== MENU BAR =====
         JMenuBar menuBar = new JMenuBar();
         JButton newFile = new JButton("New File");
         saveButton = new JButton("Save As");
         JButton compile = new JButton("Compile");
         JButton run = new JButton("Run");
         JButton exit = new JButton("Exit");
+
+        // Action listeners for menu items
+        newFile.addActionListener(e -> JOptionPane.showMessageDialog(frame,
+                "Feature under development.", "Info", JOptionPane.INFORMATION_MESSAGE));
+        compile.addActionListener(e -> JOptionPane.showMessageDialog(frame,
+                "Compile feature is under development.", "Info", JOptionPane.INFORMATION_MESSAGE));
+        run.addActionListener(e -> JOptionPane.showMessageDialog(frame,
+                "Run feature is under development.", "Info", JOptionPane.INFORMATION_MESSAGE));
+        exit.addActionListener(e -> System.exit(0));
 
         menuBar.add(newFile);
         menuBar.add(saveButton);
@@ -31,22 +42,34 @@ public class ScannerGUI {
         menuBar.add(exit);
         frame.setJMenuBar(menuBar);
 
+        // ===== TOOLBAR =====
         JToolBar toolBar = new JToolBar();
         runButton = new JButton("Run");
         compileButton = new JButton("Compile");
         scanButton = new JButton("Scanner");
+
+        // Action listeners for toolbar buttons
+        compileButton.addActionListener(e -> JOptionPane.showMessageDialog(frame,
+                "Compile feature is under development.", "Info", JOptionPane.INFORMATION_MESSAGE));
+        runButton.addActionListener(e -> JOptionPane.showMessageDialog(frame,
+                "Run feature is under development.", "Info", JOptionPane.INFORMATION_MESSAGE));
+        // scanButton performs scanning
+        scanButton.addActionListener(e -> scanText());
 
         toolBar.add(runButton);
         toolBar.add(compileButton);
         toolBar.add(scanButton);
         frame.add(toolBar, BorderLayout.NORTH);
 
+        // ===== INPUT TEXT AREA =====
         inputTextArea = new JTextArea(8, 40);
         JScrollPane inputScrollPane = new JScrollPane(inputTextArea);
         frame.add(inputScrollPane, BorderLayout.CENTER);
 
+        // ===== OUTPUT PANEL =====
         JPanel outputPanel = new JPanel(new GridLayout(1, 2));
 
+        // Symbol Table Panel
         JPanel symbolPanel = new JPanel(new BorderLayout());
         JLabel symbolLabel = new JLabel("Symbol Table");
         symbolTableArea = new JTextArea(15, 20);
@@ -56,6 +79,7 @@ public class ScannerGUI {
         symbolPanel.add(symbolLabel, BorderLayout.NORTH);
         symbolPanel.add(symbolScrollPane, BorderLayout.CENTER);
 
+        // Token List Panel
         JPanel tokenPanel = new JPanel(new BorderLayout());
         JLabel tokenLabel = new JLabel("Token List");
         tokenTableArea = new JTextArea(15, 20);
@@ -68,14 +92,6 @@ public class ScannerGUI {
         outputPanel.add(symbolPanel);
         outputPanel.add(tokenPanel);
         frame.add(outputPanel, BorderLayout.SOUTH);
-
-        scanButton.addActionListener(e -> scanText());
-        saveButton.addActionListener(e -> saveToFile());
-        compileButton.addActionListener(e -> JOptionPane.showMessageDialog(frame,
-            "Compile feature is under development.", "Info", JOptionPane.INFORMATION_MESSAGE));
-        runButton.addActionListener(e -> JOptionPane.showMessageDialog(frame,
-            "Run feature is under development.", "Info", JOptionPane.INFORMATION_MESSAGE));
-        exit.addActionListener(e -> System.exit(0));
 
         frame.setVisible(true);
     }
@@ -96,22 +112,22 @@ public class ScannerGUI {
         symbolTableArea.setText("");
 
         // Regex explanation:
-        // - Keywords: int, float, double, char, string
+        // - Keywords: int, float, double, char, string, if, else
         // - Comments
-        // - Operators (including '=')
+        // - Operators (includes arithmetic, relational, etc.)
         // - Numbers
-        // - Char literals: e.g., 'J'
-        // - String literals: match either standard quotes (") or smart quotes (\u201C and \u201D)
+        // - Char literals (e.g., 'J')
+        // - String literals (supports standard quotes "..." and smart quotes using Unicode escapes)
         // - Identifiers
         // - Separators: { } ( ) ; ,
-        String regex = "\\b(int|float|double|char|string)\\b" +          // keywords
+        String regex = "\\b(int|float|double|char|string|if|else)\\b" +  // keywords
                        "|//.*" +                                          // comments
                        "|[+\\-*/%<>=!&|]{1,2}" +                           // operators
-                       "|\\d+(\\.\\d+)?" +                                 // numbers
-                       "|'[^']'" +                                        // char literal
-                       "|[\"\\u201C](.*?)[\"\\u201D]" +                   // string literal (standard or smart quotes)
-                       "|[a-zA-Z_][a-zA-Z0-9_]*" +                         // identifiers
-                       "|[{}();,]";                                       // separators
+                       "|\\d+(\\.\\d+)?" +                                // numbers
+                       "|'[^']'" +                                       // char literal
+                       "|[\"\\u201C](.*?)[\"\\u201D]" +                  // string literal (standard or smart quotes)
+                       "|[a-zA-Z_][a-zA-Z0-9_]*" +                        // identifiers
+                       "|[{}();,]";                                      // separators
 
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(input);
@@ -124,12 +140,25 @@ public class ScannerGUI {
             String token = matcher.group();
             tokens.add(token);
 
-            if (token.matches("\\b(int|float|double|char|string)\\b")) {
+            if (token.matches("\\b(int|float|double|char|string|if|else)\\b")) {
                 tokenTableArea.append("[KEYWORD]: " + token + "\n");
             } else if (token.matches("//.*")) {
                 tokenTableArea.append("[COMMENT]: " + token + "\n");
             } else if (token.matches("[+\\-*/%<>=!&|]{1,2}")) {
-                tokenTableArea.append("[OPERATOR]: " + token + "\n");
+                // Distinguish operator types.
+                if (token.equals("==") || token.equals("!=") || token.equals("<") ||
+                    token.equals(">") || token.equals("<=") || token.equals(">=")) {
+                    tokenTableArea.append("[RELATIONAL_OPERATOR]: " + token + "\n");
+                } else if (token.equals("+") || token.equals("-") || token.equals("*") ||
+                           token.equals("/") || token.equals("%")) {
+                    tokenTableArea.append("[ARITHMETIC_OPERATOR]: " + token + "\n");
+                } else if (token.equals("=")) {
+                    tokenTableArea.append("[ASSIGNMENT_OPERATOR]: " + token + "\n");
+                } else if (token.equals("&&") || token.equals("||")) {
+                    tokenTableArea.append("[LOGICAL_OPERATOR]: " + token + "\n");
+                } else {
+                    tokenTableArea.append("[OPERATOR]: " + token + "\n");
+                }
             } else if (token.matches("\\d+(\\.\\d+)?")) {
                 tokenTableArea.append("[NUMBER]: " + token + "\n");
             } else if (token.matches("'[^']'")) {
@@ -157,18 +186,6 @@ public class ScannerGUI {
             // If a type keyword is encountered, set currentType.
             if (t.matches("\\b(int|float|double|char|string)\\b")) {
                 currentType = t;
-                // Special handling for string declarations:
-                // If the type is "string" and the next token is a string literal,
-                // then use the literal content as both the identifier and the value.
-                if (currentType.equals("string") && i + 1 < tokens.size()) {
-                    String next = tokens.get(i + 1);
-                    if (next.matches("[\"\\u201C](.*?)[\"\\u201D]")) {
-                        String literalContent = next.substring(1, next.length() - 1);
-                        symbolTable.put(literalContent, new SymbolInfo(currentType, literalContent));
-                        i++; // Skip the string literal token.
-                        continue;
-                    }
-                }
             }
             // If an identifier is encountered and we're in a declaration context, record it.
             else if (t.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
@@ -204,16 +221,6 @@ public class ScannerGUI {
                 currentIdentifier = null;
             }
         }
-        
-        // Extra pass: Add any string literal tokens not already added to the symbol table.
-        for (String token : tokens) {
-            if (token.matches("[\"\\u201C](.*?)[\"\\u201D]")) {
-                String literalContent = token.substring(1, token.length() - 1);
-                if (!symbolTable.containsKey(literalContent)) {
-                    symbolTable.put(literalContent, new SymbolInfo("string", literalContent));
-                }
-            }
-        }
 
         // Print the symbol table.
         symbolTableArea.append("Identifier\tType\tValue\n");
@@ -225,14 +232,28 @@ public class ScannerGUI {
 
     private void saveToFile() {
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Save File");
+        // Set file filter to only allow text files.
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Text Files (*.txt)", "txt"));
+        fileChooser.setDialogTitle("Save File as Text");
+
         int userSelection = fileChooser.showSaveDialog(frame);
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
+            // Append ".txt" if not present.
+            if (!fileToSave.getName().toLowerCase().endsWith(".txt")) {
+                fileToSave = new File(fileToSave.getAbsolutePath() + ".txt");
+            }
             try (FileWriter writer = new FileWriter(fileToSave)) {
-                writer.write(inputTextArea.getText());
-                JOptionPane.showMessageDialog(frame, "File saved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                // Save both the input text and the scanner outputs.
+                writer.write("Input Source Code:\n");
+                writer.write(inputTextArea.getText() + "\n\n");
+                writer.write("Token List:\n");
+                writer.write(tokenTableArea.getText() + "\n");
+                writer.write("Symbol Table:\n");
+                writer.write(symbolTableArea.getText());
+                JOptionPane.showMessageDialog(frame, "File saved successfully as " + fileToSave.getName(),
+                        "Success", JOptionPane.INFORMATION_MESSAGE);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(frame, "Error saving file!", "Error", JOptionPane.ERROR_MESSAGE);
             }
