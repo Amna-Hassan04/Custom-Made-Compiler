@@ -95,15 +95,15 @@ public class ScannerGUI {
         tokenTableArea.setText("");
         symbolTableArea.setText("");
 
-        // Updated regex to support both standard and smart quotes using Unicode escapes:
+        // Regex explanation:
         // - Keywords: int, float, double, char, string
         // - Comments
         // - Operators (including '=')
         // - Numbers
-        // - Char literals (one character between single quotes)
-        // - String literals (matches "..." or \u201C...\u201D)
+        // - Char literals: e.g., 'J'
+        // - String literals: match either standard quotes (") or smart quotes (\u201C and \u201D)
         // - Identifiers
-        // - Separators: { } ( ) ; , 
+        // - Separators: { } ( ) ; ,
         String regex = "\\b(int|float|double|char|string)\\b" +          // keywords
                        "|//.*" +                                          // comments
                        "|[+\\-*/%<>=!&|]{1,2}" +                           // operators
@@ -146,7 +146,7 @@ public class ScannerGUI {
         }
 
         // Second pass: Process tokens to build the symbol table.
-        // Look for declarations in the form:
+        // We look for declarations of the form:
         //   <type> <identifier> [= <literal>] {, <identifier> [= <literal>]} ;
         String currentType = null;
         String currentIdentifier = null;
@@ -158,8 +158,8 @@ public class ScannerGUI {
             if (t.matches("\\b(int|float|double|char|string)\\b")) {
                 currentType = t;
                 // Special handling for string declarations:
-                // If the type is 'string' and the next token is a string literal,
-                // treat the literal content as the identifier and its value.
+                // If the type is "string" and the next token is a string literal,
+                // then use the literal content as both the identifier and the value.
                 if (currentType.equals("string") && i + 1 < tokens.size()) {
                     String next = tokens.get(i + 1);
                     if (next.matches("[\"\\u201C](.*?)[\"\\u201D]")) {
@@ -202,6 +202,16 @@ public class ScannerGUI {
             else if (t.equals(";")) {
                 currentType = null;
                 currentIdentifier = null;
+            }
+        }
+        
+        // Extra pass: Add any string literal tokens not already added to the symbol table.
+        for (String token : tokens) {
+            if (token.matches("[\"\\u201C](.*?)[\"\\u201D]")) {
+                String literalContent = token.substring(1, token.length() - 1);
+                if (!symbolTable.containsKey(literalContent)) {
+                    symbolTable.put(literalContent, new SymbolInfo("string", literalContent));
+                }
             }
         }
 
