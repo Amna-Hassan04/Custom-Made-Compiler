@@ -95,28 +95,28 @@ public class ScannerGUI {
         tokenTableArea.setText("");
         symbolTableArea.setText("");
 
-        // Define a regex that matches:
-        //   - Keywords (int, float, double, char, string)
-        //   - Comments
-        //   - Operators (including =)
-        //   - Numbers
-        //   - Char literals (one character between single quotes)
-        //   - String literals (anything inside double quotes)
-        //   - Identifiers
-        //   - Separators: { } ( ) ; , 
-        String regex = "\\b(int|float|double|char|string)\\b" +      // keywords
-                       "|//.*" +                                      // comments
-                       "|[+\\-*/%<>=!&|]{1,2}" +                       // operators (includes '=')
-                       "|\\d+(\\.\\d+)?" +                             // numbers
-                       "|'[^']'" +                                    // char literal (e.g., 'J')
-                       "|\\\"(.*?)\\\"" +                             // string literal
-                       "|[a-zA-Z_][a-zA-Z0-9_]*" +                     // identifiers
-                       "|[{}();,]";                                   // separators
+        // Updated regex to support both standard and smart quotes using Unicode escapes:
+        // - Keywords: int, float, double, char, string
+        // - Comments
+        // - Operators (including '=')
+        // - Numbers
+        // - Char literals (one character between single quotes)
+        // - String literals (matches "..." or \u201C...\u201D)
+        // - Identifiers
+        // - Separators: { } ( ) ; , 
+        String regex = "\\b(int|float|double|char|string)\\b" +          // keywords
+                       "|//.*" +                                          // comments
+                       "|[+\\-*/%<>=!&|]{1,2}" +                           // operators
+                       "|\\d+(\\.\\d+)?" +                                 // numbers
+                       "|'[^']'" +                                        // char literal
+                       "|[\"\\u201C](.*?)[\"\\u201D]" +                   // string literal (standard or smart quotes)
+                       "|[a-zA-Z_][a-zA-Z0-9_]*" +                         // identifiers
+                       "|[{}();,]";                                       // separators
 
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(input);
 
-        // List to store tokens in order
+        // Use fully-qualified java.util.List to avoid ambiguity with java.awt.List
         java.util.List<String> tokens = new ArrayList<>();
 
         // Tokenize and output token categories
@@ -134,7 +134,7 @@ public class ScannerGUI {
                 tokenTableArea.append("[NUMBER]: " + token + "\n");
             } else if (token.matches("'[^']'")) {
                 tokenTableArea.append("[CHAR_LITERAL]: " + token + "\n");
-            } else if (token.matches("\\\"(.*?)\\\"")) {
+            } else if (token.matches("[\"\\u201C](.*?)[\"\\u201D]")) {
                 tokenTableArea.append("[STRING_LITERAL]: " + token + "\n");
             } else if (token.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
                 tokenTableArea.append("[IDENTIFIER]: " + token + "\n");
@@ -146,8 +146,8 @@ public class ScannerGUI {
         }
 
         // Second pass: Process tokens to build the symbol table.
-        // We'll look for declarations in the form:
-        //   <type> <id> [= <literal>] {, <id> [= <literal>]} ; 
+        // Look for declarations in the form:
+        //   <type> <identifier> [= <literal>] {, <identifier> [= <literal>]} ;
         String currentType = null;
         String currentIdentifier = null;
         Map<String, SymbolInfo> symbolTable = new LinkedHashMap<>();
@@ -157,12 +157,23 @@ public class ScannerGUI {
             // If a type keyword is encountered, set currentType.
             if (t.matches("\\b(int|float|double|char|string)\\b")) {
                 currentType = t;
+                // Special handling for string declarations:
+                // If the type is 'string' and the next token is a string literal,
+                // treat the literal content as the identifier and its value.
+                if (currentType.equals("string") && i + 1 < tokens.size()) {
+                    String next = tokens.get(i + 1);
+                    if (next.matches("[\"\\u201C](.*?)[\"\\u201D]")) {
+                        String literalContent = next.substring(1, next.length() - 1);
+                        symbolTable.put(literalContent, new SymbolInfo(currentType, literalContent));
+                        i++; // Skip the string literal token.
+                        continue;
+                    }
+                }
             }
             // If an identifier is encountered and we're in a declaration context, record it.
             else if (t.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
                 if (currentType != null) {
                     currentIdentifier = t;
-                    // Register the variable with default value (if not already added)
                     if (!symbolTable.containsKey(currentIdentifier)) {
                         symbolTable.put(currentIdentifier, new SymbolInfo(currentType, "(Not initialized)"));
                     }
@@ -173,13 +184,14 @@ public class ScannerGUI {
                 if (currentIdentifier != null && i + 1 < tokens.size()) {
                     String next = tokens.get(i + 1);
                     String value = next;
-                    // Remove quotes for char and string literals
+                    // For char and string literals, remove surrounding quotes
                     if ((value.startsWith("\"") && value.endsWith("\"")) ||
+                        (value.startsWith("\u201C") && value.endsWith("\u201D")) ||
                         (value.startsWith("'") && value.endsWith("'"))) {
                         value = value.substring(1, value.length() - 1);
                     }
                     symbolTable.put(currentIdentifier, new SymbolInfo(currentType, value));
-                    i++; // Skip the literal token since we've processed it.
+                    i++; // Skip the literal token.
                 }
             }
             // Comma indicates another variable declaration in the same statement.
